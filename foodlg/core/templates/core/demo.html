@@ -1,0 +1,212 @@
+{% extends 'core/base.html' %}
+{% load bootstrap3 %} 
+
+{% block content %}
+  <form name="uploadForm">
+    <input id="file-input" class="hide" type="file" accept="image/*;capture=camera" ></input>    
+  </form>
+  <h1 id="take-photo" class="init"><a ><i class="glyphicon glyphicon-camera"></i></a></h1>
+
+  <div id="result-panel" class="bs-docs-section">
+    <div class="row">
+      <div class="col-lg-12">
+        <h1 id="dish-name"><i class="glyphicon glyphicon-cutlery"></i>&nbsp;<span></span></h1>
+        <div id="image-box">
+            <img id="image" src="" width="100%" ></img>
+        </div>
+        <div class="info">
+            <h4 class="title"><b>Nutrition Info</b>&nbsp;(per standard serving):</h4> 
+            <hr/>
+        </div>
+        <div class="info row">
+            <div class="col-lg-3 col-sm-6 col-xs-12">
+                <p id="info-calories"><i class="glyphicon glyphicon-fire"></i>&nbsp;Calories:<span></span>kcal</p>
+            </div>
+            <div class="col-lg-3 col-sm-6 col-xs-12">
+                <p id="info-fat"><i class="glyphicon glyphicon-warning-sign"></i>&nbsp;Fat:<span></span>g</p>
+            </div>
+            <div class="col-lg-3 col-sm-6 col-xs-12">
+                <p id="info-cho"><i class="glyphicon glyphicon-grain"></i>&nbsp;Carbohydrate:<span></span>g</p>
+            </div>
+            <div class="col-lg-3 col-sm-6 col-xs-12">
+                <p id="info-protein"><i class="glyphicon glyphicon-leaf"></i>&nbsp;Protein:<span></span>g</p>
+            </div>
+        </div>
+        <hr/>
+      </div>
+    </div>
+  </div>
+  
+  
+{% endblock %}
+
+
+{% block js %}
+
+<script language="javascript">
+
+    $("#result-panel").hide();
+    $("#take-photo").click(function(){
+        $("#file-input").trigger("click"); 
+    });
+    
+    $("#file-input").change(function(){
+        var f = this.files[0];
+        ReadFile(f,function(result){
+            var file = DataURItoBlob(result);
+            $("#image").attr("src",result);
+            $("#result-panel").show();
+            predict_dish(file);
+            $("#take-photo").removeClass("init");
+       });
+    });       
+    function predict_dish(file){
+        var formData = new FormData();
+        formData.append('image', file, "image.jpg");
+        $.ajax({
+            url:"api/predict_dish_json",
+            data:formData,
+            type:"POST",
+            dataType: 'json',
+            processData: false, // Don't process the files
+            contentType: false, 
+            success:function(response){
+                if(response.result=="succeed"){
+                    var dish = response.data[0]; 
+                    $("#dish-name>span").html(dish.name);
+                    get_dish_nutrient(dish.name);
+                    $("#file-input").val("");
+                }else{
+                    console.log(response);
+                }
+            },
+            error:function(e){
+                console.log(e);
+            }
+        });
+    } 
+    function get_dish_nutrient(dishName){
+        $.ajax({
+            url:"api/nutrient_by_dish/"+dishName,
+            type:"GET",
+            dataType: 'json',
+            success:function(response){
+                if(response.dish_name = dishName){
+                    for (var idx in response.nutrients){
+                        var nutrient = response.nutrients[idx]; 
+                        var nn = nutrient.name.toLowerCase();
+                        if( nutrient.group == "proximates"){
+                            if (nn.indexOf('carbohydrate') !== -1) {
+                                fill_data('cho', nutrient);
+                            } else if (nn.indexOf('protein') !== -1) {
+                                fill_data('protein', nutrient);
+                            } else if (nn.indexOf('fat') !== -1) {
+                                fill_data('fat', nutrient);
+                            } else if (nn.indexOf('energy') !== -1) {
+                                fill_data('calories', nutrient);
+                            }
+                        }
+                    }                
+                    function fill_data(name,nutri){
+                        var str = nutri.amount.toFixed(1);
+                        $('#info-'+name).find("span").html(str);
+                        return true;
+                    }
+                
+                }
+            },
+            error:function(e){
+                console.log(e);
+            }
+        });
+    } 
+  
+    window.ReadFile = function(file,callback) {
+        var reader = new FileReader();
+
+        reader.onloadend = function () {
+            ProcessFile(reader.result, file.type,callback);
+        }
+
+        reader.onerror = function () {
+            alert('There was an error reading the file!');
+        }
+
+        reader.readAsDataURL(file);
+    }
+    window.ProcessFile = function(dataURL, fileType,callback) {
+        var maxWidth = 400;
+        var maxHeight = 400;
+
+        var image = new Image();
+        image.src = dataURL;
+
+        image.onload = function () {
+            var width = image.width;
+            var height = image.height;
+            var shouldResize = (width > maxWidth) || (height > maxHeight);
+
+            if (!shouldResize) {
+                callback(dataURL);
+                return;
+            }
+
+            var newWidth;
+            var newHeight;
+
+            if (width > height) {
+                newHeight = height * (maxWidth / width);
+                newWidth = maxWidth;
+            } else {
+                newWidth = width * (maxHeight / height);
+                newHeight = maxHeight;
+            }
+
+            var canvas = document.createElement('canvas');
+
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+
+            var context = canvas.getContext('2d');
+
+            context.drawImage(this, 0, 0, newWidth, newHeight);
+
+            dataURL = canvas.toDataURL(fileType);
+            
+            callback(dataURL);
+        };
+
+        image.onerror = function () {
+            alert('There was an error processing your file!');
+        };
+    }
+   window.DataURItoBlob = function(dataURI) {
+        // convert base64 to raw binary data held in a string
+        // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
+        var byteString = atob(dataURI.split(',')[1]);
+
+        // separate out the mime component
+        var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+        // write the bytes of the string to an ArrayBuffer
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        try {
+            return new Blob([ab], {type: mimeString});
+        } catch (e) {
+            // The BlobBuilder API has been deprecated in favour of Blob, but older
+            // browsers don't know about the Blob constructor
+            // IE10 also supports BlobBuilder, but since the `Blob` constructor
+            //  also works, there's no need to add `MSBlobBuilder`.
+            var BlobBuilder = window.WebKitBlobBuilder || window.MozBlobBuilder;
+            var bb = new BlobBuilder();
+            bb.append(ab);
+            return bb.getBlob(mimeString);
+        }
+    }   
+  </script>
+
+{% endblock %}

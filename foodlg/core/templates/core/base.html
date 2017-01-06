@@ -1,0 +1,52 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>PhotoCollect</title> 
+	<link rel="stylesheet" href="{% static "css/bootstrap-theme.min.css" %} "/>
+	<link rel="stylesheet" href="{% static "css/bootstrap.min.css" %} "/>
+	<link rel="stylesheet" href="{% static "css/style.css" %} "/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+</head>
+
+<body> 
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="{% url "core:index" %}">Foodlg</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+			<div class="navbar-right " id="user-profile"><p>Welcome to Foodlg!</p></div>
+        </div><!--/.navbar-collapse -->
+      </div>
+    </nav>
+
+    <div class="jumbotron">
+    </div>
+    <div class="container">
+	  {% block content %}
+	  {% endblock %}
+    
+    </div> <!-- /container -->
+    
+    <footer>
+      <p>&copy; 2016 NUS School of Computing</p>
+    </footer>
+	 <!-- jQuery -->
+	 <script src="{% static "js/jquery-1.10.2.js"%} "></script>
+	 <script src="{% static "js/bootstrap.min.js"%} "></script>
+      {% block js %}
+      <script >
+      </script>
+	  {% endblock %}
+      
+</body>
+</html>
+
